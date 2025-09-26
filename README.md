@@ -367,16 +367,17 @@ pip install wonderwords
 <details>
     <summary>System</summary>
 
-If you don't want to setup a *venv* you can install the dependencies as system packages. This can be done as follows:
+If you don't want to setup a *venv* you can install the dependencies as system packages. This can be done with rosdep:
 
 ```bash
-# The package names will likely be different on non-Ubuntu systems
 sudo apt update
-sudo apt install python3-pip python3-click python3-yaml python3-setproctitle python3-psutil python3-prompt-toolkit python3-osrf-pycommon python3-psutil
+rosdep update
+rosdep install --from-paths src --ignore-src -y
+```
 
-# Install any dependencies not offered by your package manager via pip
-sudo pip install --break-system-packages docstring_parser
+You can also install an optional dependency via pip:
 
+```bash
 # Optional, used for anonymous node names
 sudo pip install --break-system-packages wonderwords
 ```
