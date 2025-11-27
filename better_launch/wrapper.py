@@ -75,8 +75,15 @@ def launch_this(
     def decoration_helper(func):
         sig = inspect.signature(func)
         declared_args = _get_declared_args(sig, func.__doc__)
-        
-        func_doc = doc.parse(func.__doc__)
+
+        parsed_doc = doc.parse(func.__doc__)
+        func_doc = ""
+        if parsed_doc.short_description:
+            func_doc = parsed_doc.short_description
+            if parsed_doc.long_description:
+                func_doc += "\n\n" + parsed_doc.long_description
+        elif parsed_doc.long_description:
+            func_doc = parsed_doc.long_description
 
         argspec = inspect.getfullargspec(func)
         allow_kwargs = argspec[2] is not None

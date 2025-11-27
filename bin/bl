@@ -12,7 +12,7 @@ bl <package> <launchfile> <launch-args>
 See --help and readme for further details.
 """
 
-from typing import Any
+from typing import Any, Dict
 import sys
 import os
 import ast
@@ -50,6 +50,19 @@ from better_launch.utils.click import (
     get_click_overrides,
 )
 from better_launch.utils.better_logging import Colormode
+
+
+def _sanitize_launch_args(kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """Hide long or sensitive arguments when printing the CLI delegation message."""
+    sanitized: Dict[str, Any] = {}
+    for name, value in kwargs.items():
+        if name == "robot_description":
+            sanitized[name] = "<omitted robot_description>"
+        elif isinstance(value, str) and len(value) > 200:
+            sanitized[name] = f"{value[:200]}…(truncated)"
+        else:
+            sanitized[name] = value
+    return sanitized
 
 
 class LaunchFile:
@@ -148,7 +161,7 @@ class BetterLaunchPython(LaunchFile):
 
     def run(self, ctx: click.Context, **kwargs) -> None:
         print(
-            f">> Delegating to better_launch: {self.name}, args={kwargs}",
+            f">> Delegating to better_launch: {self.name}, args={_sanitize_launch_args(kwargs)}",
             flush=True,
         )
 
@@ -193,7 +206,7 @@ class BetterLaunchToml(LaunchFile):
 
     def run(self, ctx: click.Context, **kwargs) -> None:
         print(
-            f">> Calling launch_toml: {self.name}, args={kwargs}",
+            f">> Calling launch_toml: {self.name}, args={_sanitize_launch_args(kwargs)}",
             flush=True,
         )
 
@@ -350,14 +363,17 @@ class Ros2LaunchFile(LaunchFile):
         super().__init__(filepath, params, doc)
 
     def run(self, ctx: click.Context, **kwargs) -> None:
+        # Drop unset (None) arguments so ROS2 can apply the launch file defaults.
+        filtered_kwargs = {k: v for k, v in kwargs.items() if v is not None}
+
         print(
-            f">> Delegating to ROS2 launch: {self.name}, args={kwargs}",
+            f">> Delegating to ROS2 launch: {self.name}, args={_sanitize_launch_args(filtered_kwargs)}",
             flush=True,
         )
 
         # First argument becomes argv[0], so should be the program name
         args = ["ros2", "launch", self.filepath]
-        args.extend([f"{key}:={arg}" for key, arg in kwargs.items()])
+        args.extend([f"{key}:={arg}" for key, arg in filtered_kwargs.items()])
 
         # This does NOT return and will replace our executable with the new executable in the same process
         os.execvp("ros2", [str(a) for a in args])
@@ -376,7 +392,7 @@ class ExecutableLaunchFile(LaunchFile):
 
     def run(self, ctx: click.Context, **kwargs) -> None:
         print(
-            f">> Directly executing launch file: {self.name}, args={kwargs}",
+            f">> Directly executing launch file: {self.name}, args={_sanitize_launch_args(kwargs)}",
             flush=True,
         )
 
